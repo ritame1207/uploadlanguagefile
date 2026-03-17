@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>專業版媒體播放器 - 修正版</title>
+    <title>專業版媒體播放</title>
     <style>
         :root { --primary: #a29bfe; --bg: #0f0f1b; --card: rgba(255, 255, 255, 0.05); --text: #f0f0f0; --danger: #ff7675; --success: #00b894; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; display: flex; flex-direction: column; align-items: center; min-height: 100vh; overflow-x: hidden; }
@@ -46,6 +46,8 @@
 <div class="upload-bar">
     <label class="file-label">📂 匯入檔案
         <input type="file" id="fileInput" multiple accept="image/*,audio/*" style="display:none">
+
+<input type="file" id="fileInput" multiple accept="image/*,audio/*,audio/mp4,audio/x-m4a,.m4a" style="display:none">
     </label>
 </div>
 
