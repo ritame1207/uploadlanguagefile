@@ -8,49 +8,50 @@
         :root { --primary: #a29bfe; --bg: #0f0f1b; --card: rgba(255, 255, 255, 0.05); --text: #f0f0f0; --danger: #ff7675; --success: #00b894; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; display: flex; flex-direction: column; align-items: center; min-height: 100vh; overflow-x: hidden; }
         
+        /* Zoom Modal Styles */
+        .modal { display: none; position: fixed; z-index: 2000; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); align-items: center; justify-content: center; flex-direction: column; }
+        .modal-content { max-width: 90%; max-height: 80%; transition: transform 0.2s ease; }
+        .zoom-controls { margin-top: 20px; display: flex; gap: 15px; align-items: center; }
+        .close-modal { position: absolute; top: 20px; right: 20px; font-size: 30px; color: white; cursor: pointer; }
+
         .upload-bar { width: 100%; padding: 15px; background: rgba(0, 0, 0, 0.8); backdrop-filter: blur(10px); position: sticky; top: 0; z-index: 100; border-bottom: 1px solid rgba(255,255,255,0.1); text-align: center; }
         .file-label { background: linear-gradient(135deg, #6c5ce7, #a29bfe); color: white; padding: 10px 28px; border-radius: 50px; cursor: pointer; font-size: 14px; font-weight: bold; display: inline-block; transition: 0.3s; }
-        .file-label:active { transform: scale(0.9); }
-
+        
         .main-viewer { width: 100%; background: #000; aspect-ratio: 4/3; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-        #displayImg { width: 100%; height: 100%; object-fit: contain; }
+        #displayImg { width: 100%; height: 100%; object-fit: contain; cursor: zoom-in; }
 
         .progress-container { width: 90%; padding: 15px 0 5px; display: flex; flex-direction: column; gap: 5px; }
         #seekBar { width: 100%; height: 6px; -webkit-appearance: none; background: #333; border-radius: 3px; outline: none; }
-        #seekBar::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; background: var(--primary); border-radius: 50%; cursor: pointer; }
+        #seekBar::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; background: var(--primary); border-radius: 50%; }
         .time-info { display: flex; justify-content: space-between; font-size: 11px; color: #888; }
 
         .controls { width: 100%; background: var(--card); padding: 20px 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; justify-items: center; }
-        button { width: 85%; padding: 12px 5px; border: none; border-radius: 12px; font-size: 14px; font-weight: bold; cursor: pointer; color: white; background: rgba(255,255,255,0.1); transition: 0.2s; }
+        button { width: 85%; padding: 12px 5px; border: none; border-radius: 12px; font-size: 14px; font-weight: bold; cursor: pointer; color: white; background: rgba(255,255,255,0.1); }
         .btn-play { background: var(--success); grid-column: span 2; width: 93%; font-size: 16px; }
-        .btn-loop.active { background: var(--danger) !important; box-shadow: 0 0 10px var(--danger); }
 
         .library-container { width: 100%; padding: 15px; box-sizing: border-box; }
         .section-title { font-size: 13px; margin: 15px 0 10px; color: #777; border-left: 3px solid var(--primary); padding-left: 8px; }
-        
         .scroll-x { display: flex; gap: 15px; overflow-x: auto; padding: 10px 5px; }
         .thumb-wrapper { position: relative; min-width: 100px; height: 100px; }
-        .thumb-item { width: 100%; height: 100%; object-fit: cover; border-radius: 12px; border: 2px solid transparent; cursor: pointer; }
+        .thumb-item { width: 100%; height: 100%; object-fit: cover; border-radius: 12px; border: 2px solid transparent; }
         .thumb-item.active { border-color: var(--primary); }
-        .del-btn { position: absolute; top: -5px; right: -5px; background: var(--danger); color: white; border-radius: 50%; width: 20px; height: 20px; font-size: 12px; line-height: 20px; text-align: center; font-weight: bold; cursor: pointer; border: 2px solid var(--bg); }
+        .del-btn { position: absolute; top: -5px; right: -5px; background: var(--danger); color: white; border-radius: 50%; width: 20px; height: 20px; font-size: 12px; line-height: 20px; text-align: center; border: 2px solid var(--bg); }
 
         .audio-list { display: flex; flex-direction: column; gap: 8px; }
         .audio-item-wrapper { display: flex; align-items: center; background: var(--card); border-radius: 10px; padding: 12px 15px; }
         .audio-item-wrapper.active { background: var(--primary); }
-        .audio-name { flex: 1; font-size: 14px; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .audio-del { color: var(--danger); font-size: 20px; padding-left: 15px; cursor: pointer; }
+        .audio-name { flex: 1; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     </style>
 </head>
 <body>
 
 <div class="upload-bar">
     <label class="file-label" for="fileInput">📂 匯入檔案</label>
-<input type="file" id="fileInput" multiple accept="image/*,audio/*,video/*,.m4a,.mp4,.mov" style="display:none">
-    </label>
+    <input type="file" id="fileInput" multiple accept="image/*,audio/*,video/*,.m4a,.mp4" style="display:none">
 </div>
 
 <div class="main-viewer">
-    <img id="displayImg" src="data:image/svg+xml,<svg xmlns='http://www.w3.org' viewBox='0 0 100 100'><text x='50' y='50' text-anchor='middle' fill='%23555' font-size='8'>尚未載入內容</text></svg>">
+    <img id="displayImg" onclick="openZoom(this.src)" src="data:image/svg+xml,<svg xmlns='http://www.w3.org' viewBox='0 0 100 100'><text x='50' y='50' text-anchor='middle' fill='%23555' font-size='8'>尚未載入內容</text></svg>">
 </div>
 
 <div class="progress-container">
@@ -73,10 +74,20 @@
 </div>
 
 <div class="library-container">
-    <div class="section-title">圖片庫</div>
+    <div class="section-title">圖片庫 (點擊主圖可放大)</div>
     <div id="imgLib" class="scroll-x"></div>
     <div class="section-title">音樂庫</div>
     <div id="audioLib" class="audio-list"></div>
+</div>
+
+<div id="zoomModal" class="modal">
+    <span class="close-modal" onclick="closeZoom()">&times;</span>
+    <img id="zoomedImg" class="modal-content">
+    <div class="zoom-controls">
+        <button onclick="changeZoom(-0.2)">➖</button>
+        <input type="range" id="zoomSlider" min="1" max="3" step="0.1" value="1" oninput="applyZoom()">
+        <button onclick="changeZoom(0.2)">➕</button>
+    </div>
 </div>
 
 <audio id="audioPlayer"></audio>
@@ -84,8 +95,9 @@
 <script>
     const dbName = "FinalPlayerDB";
     let db;
+    let currentZoom = 1;
 
-    // 1. 資料庫初始化
+    // 1. Database Init
     const request = indexedDB.open(dbName, 1);
     request.onupgradeneeded = (e) => {
         db = e.target.result;
@@ -103,7 +115,7 @@
     const playBtn = document.getElementById('playBtn');
     const loopBtn = document.getElementById('loopBtn');
 
-    // 2. 檔案上傳與讀取
+    // 2. Upload Logic
     fileInput.addEventListener('change', async (e) => {
         for (const file of e.target.files) {
             const transaction = db.transaction(["files"], "readwrite");
@@ -126,7 +138,7 @@
         };
     }
 
-    // 3. 渲染組件
+    // 3. Rendering
     function renderImg(name, url) {
         if (document.querySelector(`[data-id-img="${name}"]`)) return;
         const wrap = document.createElement('div');
@@ -139,7 +151,6 @@
             document.querySelectorAll('.thumb-item').forEach(i => i.classList.remove('active'));
             wrap.querySelector('img').classList.add('active');
             
-            // 自動找音樂 (匹配主檔名)
             const baseName = name.split('.').slice(0, -1).join('.');
             const audioItems = Array.from(document.querySelectorAll('.audio-item-wrapper'));
             const match = audioItems.find(item => item.dataset.idAudio.split('.').slice(0, -1).join('.') === baseName);
@@ -173,15 +184,15 @@
         db.transaction(["files"], "readwrite").objectStore("files").delete(name);
     }
 
-    // 4. 播放控制邏輯
+    // 4. Playback Controls
     function togglePlay() {
         if (!audioPlayer.src) return;
-        if (audioPlayer.paused) { audioPlayer.play(); playBtn.innerText = "⏸ 暫停"; }
-        else { audioPlayer.pause(); playBtn.innerText = "▶ 播放"; }
+        if (audioPlayer.paused) audioPlayer.play();
+        else audioPlayer.pause();
     }
 
     function toggleLoop() {
-        audioPlayer.loop = !audioPlayer.loop; // 切換原生播放器循環屬性
+        audioPlayer.loop = !audioPlayer.loop;
         loopBtn.classList.toggle('active', audioPlayer.loop);
         loopBtn.innerText = audioPlayer.loop ? "🔁 循環: 開" : "🔁 循環: 關";
     }
@@ -194,7 +205,7 @@
         event.target.style.background = 'var(--primary)';
     }
 
-    // 5. 進度條更新
+    // 5. Progress Bar
     audioPlayer.ontimeupdate = () => {
         if (!isNaN(audioPlayer.duration)) {
             seekBar.value = (audioPlayer.currentTime / audioPlayer.duration) * 100;
@@ -215,6 +226,40 @@
 
     audioPlayer.onplay = () => playBtn.innerText = "⏸ 暫停";
     audioPlayer.onpause = () => playBtn.innerText = "▶ 播放";
+
+    // 6. Zoom Modal Logic
+    function openZoom(src) {
+        if (src.startsWith('data:image/svg')) return; // Don't zoom placeholder
+        const modal = document.getElementById('zoomModal');
+        const zoomedImg = document.getElementById('zoomedImg');
+        const slider = document.getElementById('zoomSlider');
+        zoomedImg.src = src;
+        modal.style.display = 'flex';
+        currentZoom = 1;
+        slider.value = 1;
+        applyZoom();
+    }
+
+    function closeZoom() {
+        document.getElementById('zoomModal').style.display = 'none';
+    }
+
+    function applyZoom() {
+        const slider = document.getElementById('zoomSlider');
+        const img = document.getElementById('zoomedImg');
+        currentZoom = slider.value;
+        img.style.transform = `scale(${currentZoom})`;
+    }
+
+    function changeZoom(delta) {
+        const slider = document.getElementById('zoomSlider');
+        slider.value = parseFloat(slider.value) + delta;
+        applyZoom();
+    }
+
+    document.getElementById('zoomModal').onclick = function(e) {
+        if (e.target === this) closeZoom();
+    };
 </script>
 </body>
 </html>
