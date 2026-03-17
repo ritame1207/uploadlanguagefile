@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>專業版媒體播放器 - 修正版</title>
+    <style>
+        :root { --primary: #a29bfe; --bg: #0f0f1b; --card: rgba(255, 255, 255, 0.05); --text: #f0f0f0; --danger: #ff7675; --success: #00b894; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; display: flex; flex-direction: column; align-items: center; min-height: 100vh; overflow-x: hidden; }
+        
+        .upload-bar { width: 100%; padding: 15px; background: rgba(0, 0, 0, 0.8); backdrop-filter: blur(10px); position: sticky; top: 0; z-index: 100; border-bottom: 1px solid rgba(255,255,255,0.1); text-align: center; }
+        .file-label { background: linear-gradient(135deg, #6c5ce7, #a29bfe); color: white; padding: 10px 28px; border-radius: 50px; cursor: pointer; font-size: 14px; font-weight: bold; display: inline-block; transition: 0.3s; }
+        .file-label:active { transform: scale(0.9); }
+
+        .main-viewer { width: 100%; background: #000; aspect-ratio: 4/3; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+        #displayImg { width: 100%; height: 100%; object-fit: contain; }
+
+        .progress-container { width: 90%; padding: 15px 0 5px; display: flex; flex-direction: column; gap: 5px; }
+        #seekBar { width: 100%; height: 6px; -webkit-appearance: none; background: #333; border-radius: 3px; outline: none; }
+        #seekBar::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; background: var(--primary); border-radius: 50%; cursor: pointer; }
+        .time-info { display: flex; justify-content: space-between; font-size: 11px; color: #888; }
+
+        .controls { width: 100%; background: var(--card); padding: 20px 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; justify-items: center; }
+        button { width: 85%; padding: 12px 5px; border: none; border-radius: 12px; font-size: 14px; font-weight: bold; cursor: pointer; color: white; background: rgba(255,255,255,0.1); transition: 0.2s; }
+        .btn-play { background: var(--success); grid-column: span 2; width: 93%; font-size: 16px; }
+        .btn-loop.active { background: var(--danger) !important; box-shadow: 0 0 10px var(--danger); }
+
+        .library-container { width: 100%; padding: 15px; box-sizing: border-box; }
+        .section-title { font-size: 13px; margin: 15px 0 10px; color: #777; border-left: 3px solid var(--primary); padding-left: 8px; }
+        
+        .scroll-x { display: flex; gap: 15px; overflow-x: auto; padding: 10px 5px; }
+        .thumb-wrapper { position: relative; min-width: 100px; height: 100px; }
+        .thumb-item { width: 100%; height: 100%; object-fit: cover; border-radius: 12px; border: 2px solid transparent; cursor: pointer; }
+        .thumb-item.active { border-color: var(--primary); }
+        .del-btn { position: absolute; top: -5px; right: -5px; background: var(--danger); color: white; border-radius: 50%; width: 20px; height: 20px; font-size: 12px; line-height: 20px; text-align: center; font-weight: bold; cursor: pointer; border: 2px solid var(--bg); }
+
+        .audio-list { display: flex; flex-direction: column; gap: 8px; }
+        .audio-item-wrapper { display: flex; align-items: center; background: var(--card); border-radius: 10px; padding: 12px 15px; }
+        .audio-item-wrapper.active { background: var(--primary); }
+        .audio-name { flex: 1; font-size: 14px; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .audio-del { color: var(--danger); font-size: 20px; padding-left: 15px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+<div class="upload-bar">
+    <label class="file-label">📂 匯入檔案
+        <input type="file" id="fileInput" multiple accept="image/*,audio/*" style="display:none">
+    </label>
+</div>
+
+<div class="main-viewer">
+    <img id="displayImg" src="data:image/svg+xml,<svg xmlns='http://www.w3.org' viewBox='0 0 100 100'><text x='50' y='50' text-anchor='middle' fill='%23555' font-size='8'>尚未載入內容</text></svg>">
+</div>
+
+<div class="progress-container">
+    <input type="range" id="seekBar" value="0" step="0.1">
+    <div class="time-info">
+        <span id="currTime">00:00</span>
+        <span id="durTime">00:00</span>
+    </div>
+</div>
+
+<div class="controls">
+    <button class="btn-play" onclick="togglePlay()" id="playBtn">▶ 播放</button>
+    <button class="btn-loop" id="loopBtn" onclick="toggleLoop()">🔁 循環: 關</button>
+    <div style="grid-column: span 3; display: flex; gap: 8px; width: 90%; margin-top: 5px;">
+        <button onclick="setSpeed(0.5)">0.5x</button>
+        <button onclick="setSpeed(1.0)" id="speedNormal" style="background: var(--primary)">1.0x</button>
+        <button onclick="setSpeed(1.5)">1.5x</button>
+        <button onclick="setSpeed(2.0)">2.0x</button>
+    </div>
+</div>
+
+<div class="library-container">
+    <div class="section-title">圖片庫</div>
+    <div id="imgLib" class="scroll-x"></div>
+    <div class="section-title">音樂庫</div>
+    <div id="audioLib" class="audio-list"></div>
+</div>
+
+<audio id="audioPlayer"></audio>
+
+<script>
+    const dbName = "FinalPlayerDB";
+    let db;
+
+    // 1. 資料庫初始化
+    const request = indexedDB.open(dbName, 1);
+    request.onupgradeneeded = (e) => {
+        db = e.target.result;
+        if (!db.objectStoreNames.contains("files")) db.createObjectStore("files", { keyPath: "name" });
+    };
+    request.onsuccess = (e) => {
+        db = e.target.result;
+        loadFilesFromDB();
+    };
+
+    const fileInput = document.getElementById('fileInput');
+    const displayImg = document.getElementById('displayImg');
+    const audioPlayer = document.getElementById('audioPlayer');
+    const seekBar = document.getElementById('seekBar');
+    const playBtn = document.getElementById('playBtn');
+    const loopBtn = document.getElementById('loopBtn');
+
+    // 2. 檔案上傳與讀取
+    fileInput.addEventListener('change', async (e) => {
+        for (const file of e.target.files) {
+            const transaction = db.transaction(["files"], "readwrite");
+            transaction.objectStore("files").put({ name: file.name, type: file.type, data: file });
+            const url = URL.createObjectURL(file);
+            file.type.startsWith('image/') ? renderImg(file.name, url) : renderAudio(file.name, url);
+        }
+        fileInput.value = '';
+    });
+
+    function loadFilesFromDB() {
+        const store = db.transaction(["files"], "readonly").objectStore("files");
+        store.openCursor().onsuccess = (e) => {
+            const cursor = e.target.result;
+            if (cursor) {
+                const url = URL.createObjectURL(cursor.value.data);
+                cursor.value.type.startsWith('image/') ? renderImg(cursor.value.name, url) : renderAudio(cursor.value.name, url);
+                cursor.continue();
+            }
+        };
+    }
+
+    // 3. 渲染組件
+    function renderImg(name, url) {
+        if (document.querySelector(`[data-id-img="${name}"]`)) return;
+        const wrap = document.createElement('div');
+        wrap.className = 'thumb-wrapper';
+        wrap.dataset.idImg = name;
+        wrap.innerHTML = `<img src="${url}" class="thumb-item"><div class="del-btn">×</div>`;
+        
+        wrap.querySelector('img').onclick = () => {
+            displayImg.src = url;
+            document.querySelectorAll('.thumb-item').forEach(i => i.classList.remove('active'));
+            wrap.querySelector('img').classList.add('active');
+            
+            // 自動找音樂 (匹配主檔名)
+            const baseName = name.split('.').slice(0, -1).join('.');
+            const audioItems = Array.from(document.querySelectorAll('.audio-item-wrapper'));
+            const match = audioItems.find(item => item.dataset.idAudio.split('.').slice(0, -1).join('.') === baseName);
+            if (match) match.querySelector('.audio-name').click();
+        };
+
+        wrap.querySelector('.del-btn').onclick = (e) => { e.stopPropagation(); deleteFile(name); wrap.remove(); };
+        document.getElementById('imgLib').appendChild(wrap);
+    }
+
+    function renderAudio(name, url) {
+        if (document.querySelector(`[data-id-audio="${name}"]`)) return;
+        const wrap = document.createElement('div');
+        wrap.className = 'audio-item-wrapper';
+        wrap.dataset.idAudio = name;
+        wrap.innerHTML = `<div class="audio-name">🎵 ${name}</div><div class="audio-del">×</div>`;
+        
+        wrap.querySelector('.audio-name').onclick = () => {
+            audioPlayer.src = url;
+            audioPlayer.play();
+            playBtn.innerText = "⏸ 暫停";
+            document.querySelectorAll('.audio-item-wrapper').forEach(i => i.classList.remove('active'));
+            wrap.classList.add('active');
+        };
+
+        wrap.querySelector('.audio-del').onclick = (e) => { e.stopPropagation(); deleteFile(name); wrap.remove(); };
+        document.getElementById('audioLib').appendChild(wrap);
+    }
+
+    function deleteFile(name) {
+        db.transaction(["files"], "readwrite").objectStore("files").delete(name);
+    }
+
+    // 4. 播放控制邏輯
+    function togglePlay() {
+        if (!audioPlayer.src) return;
+        if (audioPlayer.paused) { audioPlayer.play(); playBtn.innerText = "⏸ 暫停"; }
+        else { audioPlayer.pause(); playBtn.innerText = "▶ 播放"; }
+    }
+
+    function toggleLoop() {
+        audioPlayer.loop = !audioPlayer.loop; // 切換原生播放器循環屬性
+        loopBtn.classList.toggle('active', audioPlayer.loop);
+        loopBtn.innerText = audioPlayer.loop ? "🔁 循環: 開" : "🔁 循環: 關";
+    }
+
+    function setSpeed(s) {
+        audioPlayer.playbackRate = s;
+        document.querySelectorAll('.controls button').forEach(b => {
+            if(b.innerText.includes('x')) b.style.background = 'rgba(255,255,255,0.1)';
+        });
+        event.target.style.background = 'var(--primary)';
+    }
+
+    // 5. 進度條更新
+    audioPlayer.ontimeupdate = () => {
+        if (!isNaN(audioPlayer.duration)) {
+            seekBar.value = (audioPlayer.currentTime / audioPlayer.duration) * 100;
+            document.getElementById('currTime').innerText = formatTime(audioPlayer.currentTime);
+            document.getElementById('durTime').innerText = formatTime(audioPlayer.duration);
+        }
+    };
+
+    seekBar.oninput = () => {
+        if (audioPlayer.duration) audioPlayer.currentTime = (seekBar.value / 100) * audioPlayer.duration;
+    };
+
+    function formatTime(s) {
+        const m = Math.floor(s / 60);
+        const sec = Math.floor(s % 60);
+        return `${m < 10 ? '0' : ''}${m}:${sec < 10 ? '0' : ''}${sec}`;
+    }
+
+    audioPlayer.onplay = () => playBtn.innerText = "⏸ 暫停";
+    audioPlayer.onpause = () => playBtn.innerText = "▶ 播放";
+</script>
+</body>
+</html>
