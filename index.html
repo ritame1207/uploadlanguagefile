@@ -8,10 +8,40 @@
         :root { --primary: #a29bfe; --bg: #0f0f1b; --card: rgba(255, 255, 255, 0.05); --text: #f0f0f0; --danger: #ff7675; --success: #00b894; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; display: flex; flex-direction: column; align-items: center; min-height: 100vh; overflow-x: hidden; }
         
-        /* Zoom Modal Styles */
-        .modal { display: none; position: fixed; z-index: 2000; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); align-items: center; justify-content: center; flex-direction: column; }
-        .modal-content { max-width: 90%; max-height: 80%; transition: transform 0.2s ease; }
-        .zoom-controls { margin-top: 20px; display: flex; gap: 15px; align-items: center; }
+        /* Updated Zoom Modal Styles */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 2000;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.95);
+    overflow: auto; /* Allow scrolling */
+    -webkit-overflow-scrolling: touch; /* Smooth scroll for iPhone */
+}
+
+.modal-content {
+    display: block;
+    margin: auto;
+    max-width: none; /* Remove restrictions so it can grow */
+    max-height: none;
+    transition: width 0.2s ease; /* Smoothly grow width instead of scale */
+    padding: 20px;
+}
+
+.zoom-controls {
+    position: sticky; /* Keep controls visible while scrolling */
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 15px;
+    background: rgba(0,0,0,0.6);
+    padding: 10px 20px;
+    border-radius: 30px;
+    z-index: 2001;
+    width: fit-content;
+}
         .close-modal { position: absolute; top: 20px; right: 20px; font-size: 30px; color: white; cursor: pointer; }
 
         .upload-bar { width: 100%; padding: 15px; background: rgba(0, 0, 0, 0.8); backdrop-filter: blur(10px); position: sticky; top: 0; z-index: 100; border-bottom: 1px solid rgba(255,255,255,0.1); text-align: center; }
@@ -245,11 +275,30 @@
     }
 
     function applyZoom() {
-        const slider = document.getElementById('zoomSlider');
-        const img = document.getElementById('zoomedImg');
-        currentZoom = slider.value;
-        img.style.transform = `scale(${currentZoom})`;
-    }
+    const slider = document.getElementById('zoomSlider');
+    const img = document.getElementById('zoomedImg');
+    
+    // Instead of transform: scale, we change the width percentage
+    // 100% is original fit, 400% is 4x zoom
+    let zoomLevel = slider.value * 80; 
+    img.style.width = zoomLevel + '%';
+}
+
+function openZoom(src) {
+    if (src.includes('data:image/svg')) return;
+    const modal = document.getElementById('zoomModal');
+    const zoomedImg = document.getElementById('zoomedImg');
+    const slider = document.getElementById('zoomSlider');
+    
+    zoomedImg.src = src;
+    modal.style.display = 'block'; // Change from flex to block
+    slider.value = 1;
+    applyZoom();
+    
+    // Reset scroll position to top
+    modal.scrollTop = 0;
+    modal.scrollLeft = 0;
+}
 
     function changeZoom(delta) {
         const slider = document.getElementById('zoomSlider');
