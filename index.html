@@ -271,23 +271,30 @@
 
     // 檔案操作與播放邏輯
     async function renameFile(oldName) {
-        const newName = prompt("請輸入新的檔案名稱：", oldName);
-        if (!newName || newName === oldName) return;
+    const newName = prompt("請輸入新的檔案名稱：", oldName);
+    if (!newName || newName === oldName) return;
 
-        const transaction = db.transaction(["files"], "readwrite");
-        const store = transaction.objectStore("files");
-        const getRequest = store.get(oldName);
-
-        getRequest.onsuccess = () => {
-            const record = getRequest.result;
-            if (record) {
-                store.delete(oldName);
-                record.name = newName;
-                store.put(record);
-                transaction.oncomplete = () => { location.reload(); };
-            }
-        };
-    }
+    const transaction = db.transaction(["files"], "readwrite");
+    const store = transaction.objectStore("files");
+    
+    // 1. 先獲取舊資料
+    const getRequest = store.get(oldName);
+    getRequest.onsuccess = () => {
+        const record = getRequest.result;
+        if (record) {
+            // 2. 刪除舊紀錄
+            store.delete(oldName);
+            // 3. 更新名稱並存入新紀錄
+            record.name = newName;
+            store.put(record);
+            
+            // 4. 重要：等待交易完成後再重新整理頁面，確保新 URL 生成
+            transaction.oncomplete = () => {
+                location.reload(); 
+            };
+        }
+    };
+}
 
     function deleteFile(name) {
         db.transaction(["files"], "readwrite").objectStore("files").delete(name);
