@@ -78,6 +78,8 @@
 <div class="upload-bar">
     <label class="file-label" for="fileInput">📂 匯入檔案</label>
     <input type="file" id="fileInput" multiple accept="image/*,audio/*,video/*,.m4a,.mp4" style="display:none">
+    <input type="text" id="searchInput" placeholder="搜尋檔案名稱..." 
+           style="margin-top: 10px; width: 80%; padding: 8px 15px; border-radius: 20px; border: none; background: rgba(255,255,255,0.1); color: white; outline: none;">
 </div>
 
 <div class="main-viewer">
@@ -309,6 +311,25 @@ function openZoom(src) {
     document.getElementById('zoomModal').onclick = function(e) {
         if (e.target === this) closeZoom();
     };
+
+// 7. Search Functionality
+document.getElementById('searchInput').addEventListener('input', function(e) {
+    const term = e.target.value.toLowerCase();
+    
+    // Filter Images
+    const imgItems = document.querySelectorAll('.thumb-wrapper');
+    imgItems.forEach(item => {
+        const name = item.dataset.idImg.toLowerCase();
+        item.style.display = name.includes(term) ? 'block' : 'none';
+    });
+
+    // Filter Audio
+    const audioItems = document.querySelectorAll('.audio-item-wrapper');
+    audioItems.forEach(item => {
+        const name = item.dataset.idAudio.toLowerCase();
+        item.style.display = name.includes(term) ? 'flex' : 'none';
+    });
+});
 </script>
 </body>
 </html>
