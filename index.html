@@ -74,20 +74,19 @@
 
         .controls { 
             width: 100%; max-width: 900px; background: var(--card); 
-            padding: 20px 0; display: grid; grid-template-columns: repeat(3, 1fr); 
+            padding: 15px 0; display: grid; grid-template-columns: repeat(3, 1fr); 
             gap: 12px; justify-items: center; border-radius: 12px; margin: 10px 0;
         }
         button { 
-            width: 85%; padding: 12px 5px; border: none; border-radius: 12px; 
+            width: 85%; padding: 8px 5px; border: none; border-radius: 12px; 
             font-size: 14px; font-weight: bold; cursor: pointer; color: white; 
             background: rgba(255,255,255,0.08); transition: 0.2s;
         }
         button:hover { background: rgba(255,255,255,0.15); }
 
         /* 修改播放鍵顏色為 success (綠色) */
-        .btn-play { background: var(--success); grid-column: span 2; width: 93%; font-size: 16px; }
-        .btn-play:hover { background: #00a383; }
-
+.btn-play { background: var(--success); grid-column: span 1; width: 93%; font-size: 16px; padding: 8px 5px; }
+.btn-play:hover { background: #00a383; }
         /* 媒體庫區域 */
         .library-container { width: 100%; max-width: 900px; padding: 15px; box-sizing: border-box; }
         .section-title { font-size: 14px; margin: 20px 0 12px; color: var(--primary-light); font-weight: bold; border-left: 4px solid var(--primary); padding-left: 10px; }
@@ -154,7 +153,9 @@
 
 <div class="controls">
     <button class="btn-play" onclick="togglePlay()" id="playBtn">▶ 播放</button>
+    <button onclick="restartRandom()" style="background: var(--primary-light); color: #fff;">🎲 隨機</button>
     <button id="loopBtn" onclick="toggleLoop()">🔁 循環: 關</button>
+
     <div style="grid-column: span 3; display: flex; gap: 8px; width: 93%; margin-top: 5px;">
         <button onclick="setSpeed(0.5)">0.5x</button>
         <button onclick="setSpeed(1.0)" id="speedNormal" style="background: var(--primary)">1.0x</button>
@@ -162,7 +163,6 @@
         <button onclick="setSpeed(2.0)">2.0x</button>
     </div>
 </div>
-
 <div class="library-container">
     <div class="section-title">圖片庫</div>
     <div id="imgLib" class="scroll-x"></div>
@@ -216,15 +216,58 @@
 
     function loadFilesFromDB() {
         const store = db.transaction(["files"], "readonly").objectStore("files");
+        const allFiles = [];
+        
         store.openCursor().onsuccess = (e) => {
             const cursor = e.target.result;
             if (cursor) {
                 const url = URL.createObjectURL(cursor.value.data);
-                cursor.value.type.startsWith('image/') ? renderImg(cursor.value.name, url) : renderAudio(cursor.value.name, url);
+                const fileData = { name: cursor.value.name, type: cursor.value.type, url: url };
+                allFiles.push(fileData);
+                
+                // 原始渲染邏輯
+                fileData.type.startsWith('image/') ? renderImg(fileData.name, url) : renderAudio(fileData.name, url);
                 cursor.continue();
+            } else {
+                // 當所有檔案讀取完畢後 (cursor 為空)，執行隨機選取
+                autoPlayRandom(allFiles);
             }
         };
     }
+
+    function autoPlayRandom(files) {
+        // 篩選出所有圖片
+        const images = files.filter(f => f.type.startsWith('image/'));
+        if (images.length === 0) return;
+
+        // 隨機挑選一張圖片
+        const randomImg = images[Math.floor(Math.random() * images.length)];
+        
+        // 觸發該圖片的點擊事件 (這會連動尋找同名音檔並播放)
+        const imgElement = document.querySelector(`[data-id-img="${randomImg.name}"] img`);
+        if (imgElement) {
+            imgElement.click();
+            console.log("自動隨機播放: " + randomImg.name);
+        }
+    }
+function restartRandom() {
+    const store = db.transaction(["files"], "readonly").objectStore("files");
+    const allFiles = [];
+
+    store.openCursor().onsuccess = (e) => {
+        const cursor = e.target.result;
+        if (cursor) {
+            allFiles.push({ 
+                name: cursor.value.name, 
+                type: cursor.value.type 
+            });
+            cursor.continue();
+        } else {
+            // 重新執行隨機選取邏輯
+            autoPlayRandom(allFiles);
+        }
+    };
+}
 
     // 渲染函數
     function renderImg(name, url) {
